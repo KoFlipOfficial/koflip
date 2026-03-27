@@ -1,1 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KoFlip</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0f0f13; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+    h1 { font-size: 3rem; color: #f04; margin-bottom: 10px; }
+    p { color: #888; margin-bottom: 40px; }
+    .multiplier { font-size: 6rem; font-weight: bold; color: #0f0; transition: color 0.3s; }
+    .multiplier.crashed { color: #f04; }
+    .controls { margin-top: 30px; display: flex; gap: 10px; }
+    input { padding: 12px 20px; border-radius: 8px; border: none; background: #1e1e2e; color: #fff; font-size: 1rem; width: 150px; }
+    button { padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-size: 1rem; font-weight: bold; }
+    .bet-btn { background: #f04; color: #fff; }
+    .cashout-btn { background: #0f0; color: #000; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .status { margin-top: 20px; font-size: 1.1rem; color: #aaa; }
+    .balance { position: absolute; top: 20px; right: 30px; font-size: 1.2rem; }
+    .balance span { color: #f04; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="balance">Balance: <span id="balance">1000</span> coins</div>
+  <h1>KoFlip</h1>
+  <p>Place your bet and cash out before it crashes!</p>
+  <div class="multiplier" id="multiplier">1.00x</div>
+  <div class="controls">
+    <input type="number" id="betAmount" placeholder="Bet amount" min="1" value="100"/>
+    <button class="bet-btn" id="betBtn" onclick="placeBet()">Bet</button>
+    <button class="cashout-btn" id="cashoutBtn" onclick="cashOut()" disabled>Cash Out</button>
+  </div>
+  <div class="status" id="status">Place a bet to start!</div>
 
+  <script>
+    let balance = 1000;
+    let multiplier = 1.0;
+    let crashed = false;
+    let bet = 0;
+    let betPlaced = false;
+    let cashedOut = false;
+    let interval = null;
+    let crashPoint = 1.0;
+
+    function generateCrashPoint() {
+      const r = Math.random();
+      return Math.max(1.0, 1 / (1 - r) * 0.97);
+    }
+
+    function placeBet() {
+      const amount = parseInt(document.getElementById('betAmount').value);
+      if (!amount || amount <= 0 || amount > balance) {
+        document.getElementById('status').textContent = 'Invalid bet amount!';
+        return;
+      }
+      bet = amount;
+      balance -= bet;
+      updateBalance();
+      betPlaced = true;
+      cashedOut = false;
+      crashed = false;
+      multiplier = 1.0;
+      crashPoint = generateCrashPoint();
+      document.getElementById('betBtn').disabled = true;
+      document.getElementById('cashoutBtn').disabled = false;
+      document.getElementById('multiplier').classList.remove('crashed');
+      document.getElementById('status').textContent = 'Game running... Cash out in time!';
+      startGame();
+    }
+
+    function startGame() {
+      interval = setInterval(() => {
+        multiplier += multiplier * 0.02;
+        document.getElementById('multiplier').textContent = multiplier.toFixed(2) + 'x';
+        if (multiplier >= crashPoint) {
+          crash();
+        }
+      }, 100);
+    }
+
+    function crash() {
+      clearInterval(interval);
+      crashed = true;
+      document.getElementById('multiplier').classList.add('crashed');
+      document.getElementById('cashoutBtn').disabled = true;
+      document.getElementById('betBtn').disabled = false;
+      if (!cashedOut) {
+        document.getElementById('status').textContent = `Crashed at ${multiplier.toFixed(2)}x! You lost ${bet} coins.`;
+      }
+      betPlaced = false;
+    }
+
+    function cashOut() {
+      if (!betPlaced || cashedOut || crashed) return;
+      cashedOut = true;
+      clearInterval(interval);
+      const winnings = Math.floor(bet * multiplier);
+      balance += winnings;
+      updateBalance();
+      document.getElementById('cashoutBtn').disabled = true;
+      document.getElementById('betBtn').disabled = false;
+      document.getElementById('status').textContent = `Cashed out at ${multiplier.toFixed(2)}x! You won ${winnings} coins!`;
+      betPlaced = false;
+    }
+
+    function updateBalance() {
+      document.getElementById('balance').textContent = balance;
+    }
+  </script>
+</body>
+</html>
